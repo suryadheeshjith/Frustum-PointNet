@@ -1,7 +1,8 @@
 .DS_Store
-train/__pycache__
-kitti/__pycache__
-mayavi/__pycache__
-models/__pycache__
+train/__pycache__/
+kitti/__pycache__/
+mayavi/__pycache__/
+models/__pycache__/
 kitti/*.pickle
 dataset
+detection_results_v1
