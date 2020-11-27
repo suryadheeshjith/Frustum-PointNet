@@ -484,7 +484,7 @@ if __name__=='__main__':
 
     if args.gen_train:
         extract_frustum_data(\
-            os.path.join(BASE_DIR, 'image_sets/train.txt'),
+            os.path.join(BASE_DIR, 'image_sets/train1.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'train.pickle'),
             viz=False, perturb_box2d=True, augmentX=5,
@@ -492,7 +492,7 @@ if __name__=='__main__':
 
     if args.gen_val:
         extract_frustum_data(\
-            os.path.join(BASE_DIR, 'image_sets/val.txt'),
+            os.path.join(BASE_DIR, 'image_sets/val1.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'val.pickle'),
             viz=False, perturb_box2d=False, augmentX=1,
@@ -500,7 +500,7 @@ if __name__=='__main__':
 
     if args.gen_val_rgb_detection:
         extract_frustum_data_rgb_detection(\
-            os.path.join(BASE_DIR, 'rgb_detections/rgb_detection_val.txt'),
+            os.path.join(BASE_DIR, 'rgb_detections/rgb_detection_val1.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'val_rgb_detection.pickle'),
             viz=False,
