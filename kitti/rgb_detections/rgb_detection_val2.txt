@@ -1,0 +1,8 @@
+dataset/KITTI/object/training/image_2/000004.png 2 0.998799 280 185 344 215
+dataset/KITTI/object/training/image_2/000004.png 2 0.996907 367 183 404 205
+dataset/KITTI/object/training/image_2/000004.png 2 0.636475 447 176 473 194
+dataset/KITTI/object/training/image_2/000004.png 2 0.0609634 419 176 451 195
+dataset/KITTI/object/training/image_2/000004.png 2 0.0403211 404 173 441 195
+dataset/KITTI/object/training/image_2/000004.png 3 0.875187 1192 206 1242 330
+dataset/KITTI/object/training/image_2/000004.png 3 0.0218598 1217 180 1243 331
+dataset/KITTI/object/training/image_2/000005.png 1 0.97717 329 179 359 239
