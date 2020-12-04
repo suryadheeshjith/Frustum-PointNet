@@ -78,11 +78,9 @@ class Calibration(object):
 
         TODO(rqi): do matrix multiplication only once for each projection.
     '''
-    def __init__(self, calib_filepath, from_video=False):
-        if from_video:
-            calibs = self.read_calib_from_video(calib_filepath)
-        else:
-            calibs = self.read_calib_file(calib_filepath)
+    def __init__(self, calib_filepath): #, from_video=False
+
+        calibs = self.read_calib_file(calib_filepath)
         # Projection matrix from rect camera coord to image2 coord
         self.P = calibs['P2']
         self.P = np.reshape(self.P, [3,4])
@@ -121,24 +119,10 @@ class Calibration(object):
 
         return data
 
-    def read_calib_from_video(self, calib_root_dir):
-        ''' Read calibration for camera 2 from video calib files.
-            there are calib_cam_to_cam and calib_velo_to_cam under the calib_root_dir
-        '''
-        data = {}
-        cam2cam = self.read_calib_file(os.path.join(calib_root_dir, 'calib_cam_to_cam.txt'))
-        velo2cam = self.read_calib_file(os.path.join(calib_root_dir, 'calib_velo_to_cam.txt'))
-        Tr_velo_to_cam = np.zeros((3,4))
-        Tr_velo_to_cam[0:3,0:3] = np.reshape(velo2cam['R'], [3,3])
-        Tr_velo_to_cam[:,3] = velo2cam['T']
-        data['Tr_velo_to_cam'] = np.reshape(Tr_velo_to_cam, [12])
-        data['R0_rect'] = cam2cam['R_rect_00']
-        data['P2'] = cam2cam['P_rect_02']
-        return data
 
     def cart2hom(self, pts_3d):
         ''' Input: nx3 points in Cartesian
-            Oupput: nx4 points in Homogeneous by pending 1
+            Output: nx4 points in Homogeneous by pending 1
         '''
         n = pts_3d.shape[0]
         pts_3d_hom = np.hstack((pts_3d, np.ones((n,1))))
@@ -331,6 +315,11 @@ def compute_box_3d(obj, P):
     corners_2d = project_to_image(np.transpose(corners_3d), P);
     #print 'corners_2d: ', corners_2d
     return corners_2d, np.transpose(corners_3d)
+
+
+##################################################################################################
+#### OUTPUTTING
+##################################################################################################
 
 
 def compute_orientation_3d(obj, P):
