@@ -353,7 +353,7 @@ def compute_orientation_3d(obj, P):
 
 def draw_projected_box3d(image, qs, color=(255,255,255), thickness=2):
     ''' Draw 3d bounding box in image
-        qs: (8,3) array of vertices for the 3d box in following order:
+        qs: (8,2) array of vertices for the 3d box in following order:
             1 -------- 0
            /|         /|
           2 -------- 3 .

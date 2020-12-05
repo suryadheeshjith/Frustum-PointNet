@@ -7,3 +7,4 @@ kitti/*.pickle
 dataset
 detection_results_v1
 kitti/test.py
+kitti/pc_sample.txt

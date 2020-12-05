@@ -30,18 +30,14 @@ class kitti_object(object):
         self.split = split
         self.split_dir = os.path.join(root_dir, split)
 
-        # Hardcoded value
-        if split == 'training':
-            self.num_samples = 7481
-        elif split == 'testing':
-            self.num_samples = 7518
-        else:
-            print('Unknown split: %s' % (split))
-            exit(-1)
 
         self.image_dir = os.path.join(self.split_dir, 'image_2')
         self.calib_dir = os.path.join(self.split_dir, 'calib')
         self.lidar_dir = os.path.join(self.split_dir, 'velodyne')
+
+
+        self.num_samples = len([name for name in os.listdir(self.calib_dir) if os.path.isfile(os.path.join(self.calib_dir, name))])
+        print(self.num_samples)
 
         # Hardcoded
         # training
