@@ -133,6 +133,9 @@ def extract_frustum_data(idx_filename, split, output_filename, viz=False,
                 box2d_center_rect = calib.project_image_to_rect(uvdepth)
                 frustum_angle = -1 * np.arctan2(box2d_center_rect[0,2],
                     box2d_center_rect[0,0])
+
+                print("box2d_center_rect : ", box2d_center_rect)
+                print("Frustum angle : ", frustum_angle)
                 # 3D BOX: Get pts velo in 3d box
                 obj = objects[obj_idx]
                 box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)

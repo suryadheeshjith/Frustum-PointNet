@@ -289,6 +289,11 @@ def compute_box_3d(obj, P):
     # compute rotational matrix around yaw axis
     R = roty(obj.ry)
 
+    # Test yaw
+    #R = roty(-0.523) 
+
+
+
     # 3d bounding box dimensions
     l = obj.l;
     w = obj.w;
@@ -301,7 +306,8 @@ def compute_box_3d(obj, P):
 
     # rotate and translate 3d bounding box
     corners_3d = np.dot(R, np.vstack([x_corners,y_corners,z_corners]))
-    #print corners_3d.shape
+
+
     corners_3d[0,:] = corners_3d[0,:] + obj.t[0];
     corners_3d[1,:] = corners_3d[1,:] + obj.t[1];
     corners_3d[2,:] = corners_3d[2,:] + obj.t[2];

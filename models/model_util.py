@@ -29,9 +29,9 @@ g_mean_size_arr = np.zeros((NUM_SIZE_CLUSTER, 3)) # size clustrs
 for i in range(NUM_SIZE_CLUSTER):
     g_mean_size_arr[i,:] = g_type_mean_size[g_class2type[i]]
 
-# -----------------
-# TF Functions Helpers
-# -----------------
+################################################
+### Model
+################################################
 
 def tf_gather_object_pc(point_cloud, mask, npoints=512):
     ''' Gather object point clouds according to predicted masks.
@@ -48,7 +48,7 @@ def tf_gather_object_pc(point_cloud, mask, npoints=512):
         for i in range(mask.shape[0]):
             pos_indices = np.where(mask[i,:]>0.5)[0]
             # skip cases when pos_indices is empty
-            if len(pos_indices) > 0: 
+            if len(pos_indices) > 0:
                 if len(pos_indices) > npoints:
                     choice = np.random.choice(len(pos_indices),
                         npoints, replace=False)
@@ -61,69 +61,9 @@ def tf_gather_object_pc(point_cloud, mask, npoints=512):
             indices[i,:,0] = i
         return indices
 
-    indices = tf.py_func(mask_to_indices, [mask], tf.int32)  
+    indices = tf.py_func(mask_to_indices, [mask], tf.int32)
     object_pc = tf.gather_nd(point_cloud, indices)
     return object_pc, indices
-
-
-def get_box3d_corners_helper(centers, headings, sizes):
-    """ TF layer. Input: (N,3), (N,), (N,3), Output: (N,8,3) """
-    #print '-----', centers
-    N = centers.get_shape()[0].value
-    l = tf.slice(sizes, [0,0], [-1,1]) # (N,1)
-    w = tf.slice(sizes, [0,1], [-1,1]) # (N,1)
-    h = tf.slice(sizes, [0,2], [-1,1]) # (N,1)
-    #print l,w,h
-    x_corners = tf.concat([l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2], axis=1) # (N,8)
-    y_corners = tf.concat([h/2,h/2,h/2,h/2,-h/2,-h/2,-h/2,-h/2], axis=1) # (N,8)
-    z_corners = tf.concat([w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2], axis=1) # (N,8)
-    corners = tf.concat([tf.expand_dims(x_corners,1), tf.expand_dims(y_corners,1), tf.expand_dims(z_corners,1)], axis=1) # (N,3,8)
-    #print x_corners, y_corners, z_corners
-    c = tf.cos(headings)
-    s = tf.sin(headings)
-    ones = tf.ones([N], dtype=tf.float32)
-    zeros = tf.zeros([N], dtype=tf.float32)
-    row1 = tf.stack([c,zeros,s], axis=1) # (N,3)
-    row2 = tf.stack([zeros,ones,zeros], axis=1)
-    row3 = tf.stack([-s,zeros,c], axis=1)
-    R = tf.concat([tf.expand_dims(row1,1), tf.expand_dims(row2,1), tf.expand_dims(row3,1)], axis=1) # (N,3,3)
-    #print row1, row2, row3, R, N
-    corners_3d = tf.matmul(R, corners) # (N,3,8)
-    corners_3d += tf.tile(tf.expand_dims(centers,2), [1,1,8]) # (N,3,8)
-    corners_3d = tf.transpose(corners_3d, perm=[0,2,1]) # (N,8,3)
-    return corners_3d
-
-def get_box3d_corners(center, heading_residuals, size_residuals):
-    """ TF layer.
-    Inputs:
-        center: (B,3)
-        heading_residuals: (B,NH)
-        size_residuals: (B,NS,3)
-    Outputs:
-        box3d_corners: (B,NH,NS,8,3) tensor
-    """
-    batch_size = center.get_shape()[0].value
-    heading_bin_centers = tf.constant(np.arange(0,2*np.pi,2*np.pi/NUM_HEADING_BIN), dtype=tf.float32) # (NH,)
-    headings = heading_residuals + tf.expand_dims(heading_bin_centers, 0) # (B,NH)
-    
-    mean_sizes = tf.expand_dims(tf.constant(g_mean_size_arr, dtype=tf.float32), 0) + size_residuals # (B,NS,1)
-    sizes = mean_sizes + size_residuals # (B,NS,3)
-    sizes = tf.tile(tf.expand_dims(sizes,1), [1,NUM_HEADING_BIN,1,1]) # (B,NH,NS,3)
-    headings = tf.tile(tf.expand_dims(headings,-1), [1,1,NUM_SIZE_CLUSTER]) # (B,NH,NS)
-    centers = tf.tile(tf.expand_dims(tf.expand_dims(center,1),1), [1,NUM_HEADING_BIN, NUM_SIZE_CLUSTER,1]) # (B,NH,NS,3)
-
-    N = batch_size*NUM_HEADING_BIN*NUM_SIZE_CLUSTER
-    corners_3d = get_box3d_corners_helper(tf.reshape(centers, [N,3]), tf.reshape(headings, [N]), tf.reshape(sizes, [N,3]))
-
-    return tf.reshape(corners_3d, [batch_size, NUM_HEADING_BIN, NUM_SIZE_CLUSTER, 8, 3])
-
-
-def huber_loss(error, delta):
-    abs_error = tf.abs(error)
-    quadratic = tf.minimum(abs_error, delta)
-    linear = (abs_error - quadratic)
-    losses = 0.5 * quadratic**2 + delta * linear
-    return tf.reduce_mean(losses)
 
 
 def parse_output_to_tensors(output, end_points):
@@ -146,7 +86,7 @@ def parse_output_to_tensors(output, end_points):
         heading_residuals_normalized # BxNUM_HEADING_BIN (-1 to 1)
     end_points['heading_residuals'] = \
         heading_residuals_normalized * (np.pi/NUM_HEADING_BIN) # BxNUM_HEADING_BIN
-    
+
     size_scores = tf.slice(output, [0,3+NUM_HEADING_BIN*2],
         [-1,NUM_SIZE_CLUSTER]) # BxNUM_SIZE_CLUSTER
     size_residuals_normalized = tf.slice(output,
@@ -159,10 +99,6 @@ def parse_output_to_tensors(output, end_points):
         tf.expand_dims(tf.constant(g_mean_size_arr, dtype=tf.float32), 0)
 
     return end_points
-
-# --------------------------------------
-# Shared subgraphs for v1 and v2 models
-# --------------------------------------
 
 def placeholder_inputs(batch_size, num_point):
     ''' Get useful placeholder tensors.
@@ -192,7 +128,7 @@ def placeholder_inputs(batch_size, num_point):
 def point_cloud_masking(point_cloud, logits, end_points, xyz_only=True):
     ''' Select point cloud with predicted 3D mask,
     translate coordinates to the masked points centroid.
-    
+
     Input:
         point_cloud: TF tensor in shape (B,N,C)
         logits: TF tensor in shape (B,N,2)
@@ -247,7 +183,7 @@ def get_center_regression_net(object_point_cloud, one_hot_vec,
             length-3 vectors indicating predicted object type
     Output:
         predicted_center: TF tensor in shape (B,3)
-    ''' 
+    '''
     num_point = object_point_cloud.get_shape()[1].value
     net = tf.expand_dims(object_point_cloud, 2)
     net = tf_util.conv2d(net, 128, [1,1],
@@ -275,6 +211,71 @@ def get_center_regression_net(object_point_cloud, one_hot_vec,
     return predicted_center, end_points
 
 
+################################################
+### Losses
+################################################
+
+def get_box3d_corners_helper(centers, headings, sizes):
+    """ TF layer. Input: (N,3), (N,), (N,3), Output: (N,8,3) """
+    #print '-----', centers
+    N = centers.get_shape()[0].value
+    l = tf.slice(sizes, [0,0], [-1,1]) # (N,1)
+    w = tf.slice(sizes, [0,1], [-1,1]) # (N,1)
+    h = tf.slice(sizes, [0,2], [-1,1]) # (N,1)
+    #print l,w,h
+    x_corners = tf.concat([l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2], axis=1) # (N,8)
+    y_corners = tf.concat([h/2,h/2,h/2,h/2,-h/2,-h/2,-h/2,-h/2], axis=1) # (N,8)
+    z_corners = tf.concat([w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2], axis=1) # (N,8)
+    corners = tf.concat([tf.expand_dims(x_corners,1), tf.expand_dims(y_corners,1), tf.expand_dims(z_corners,1)], axis=1) # (N,3,8)
+    #print x_corners, y_corners, z_corners
+    c = tf.cos(headings)
+    s = tf.sin(headings)
+    ones = tf.ones([N], dtype=tf.float32)
+    zeros = tf.zeros([N], dtype=tf.float32)
+    row1 = tf.stack([c,zeros,s], axis=1) # (N,3)
+    row2 = tf.stack([zeros,ones,zeros], axis=1)
+    row3 = tf.stack([-s,zeros,c], axis=1)
+    R = tf.concat([tf.expand_dims(row1,1), tf.expand_dims(row2,1), tf.expand_dims(row3,1)], axis=1) # (N,3,3)
+    #print row1, row2, row3, R, N
+    corners_3d = tf.matmul(R, corners) # (N,3,8)
+    corners_3d += tf.tile(tf.expand_dims(centers,2), [1,1,8]) # (N,3,8)
+    corners_3d = tf.transpose(corners_3d, perm=[0,2,1]) # (N,8,3)
+    return corners_3d
+
+def get_box3d_corners(center, heading_residuals, size_residuals):
+    """ TF layer.
+    Inputs:
+        center: (B,3)
+        heading_residuals: (B,NH)
+        size_residuals: (B,NS,3)
+    Outputs:
+        box3d_corners: (B,NH,NS,8,3) tensor
+    """
+    batch_size = center.get_shape()[0].value
+    heading_bin_centers = tf.constant(np.arange(0,2*np.pi,2*np.pi/NUM_HEADING_BIN), dtype=tf.float32) # (NH,)
+    headings = heading_residuals + tf.expand_dims(heading_bin_centers, 0) # (B,NH)
+
+    mean_sizes = tf.expand_dims(tf.constant(g_mean_size_arr, dtype=tf.float32), 0) # (B,NS,1)
+    sizes = mean_sizes + size_residuals # (B,NS,3)
+    sizes = tf.tile(tf.expand_dims(sizes,1), [1,NUM_HEADING_BIN,1,1]) # (B,NH,NS,3)
+    headings = tf.tile(tf.expand_dims(headings,-1), [1,1,NUM_SIZE_CLUSTER]) # (B,NH,NS)
+    centers = tf.tile(tf.expand_dims(tf.expand_dims(center,1),1), [1,NUM_HEADING_BIN, NUM_SIZE_CLUSTER,1]) # (B,NH,NS,3)
+
+    N = batch_size*NUM_HEADING_BIN*NUM_SIZE_CLUSTER
+    corners_3d = get_box3d_corners_helper(tf.reshape(centers, [N,3]), tf.reshape(headings, [N]), tf.reshape(sizes, [N,3]))
+
+    return tf.reshape(corners_3d, [batch_size, NUM_HEADING_BIN, NUM_SIZE_CLUSTER, 8, 3])
+
+
+def huber_loss(error, delta):
+    abs_error = tf.abs(error)
+    quadratic = tf.minimum(abs_error, delta)
+    linear = (abs_error - quadratic)
+    losses = 0.5 * quadratic**2 + delta * linear
+    return tf.reduce_mean(losses)
+
+
+
 def get_loss(mask_label, center_label, \
              heading_class_label, heading_residual_label, \
              size_class_label, size_residual_label, \
@@ -285,8 +286,8 @@ def get_loss(mask_label, center_label, \
     Input:
         mask_label: TF int32 tensor in shape (B,N)
         center_label: TF tensor in shape (B,3)
-        heading_class_label: TF int32 tensor in shape (B,) 
-        heading_residual_label: TF tensor in shape (B,) 
+        heading_class_label: TF int32 tensor in shape (B,)
+        heading_residual_label: TF tensor in shape (B,)
         size_class_label: TF tensor int32 in shape (B,)
         size_residual_label: TF tensor tensor in shape (B,)
         end_points: dict, outputs from our model
@@ -354,7 +355,7 @@ def get_loss(mask_label, center_label, \
         size_residual_normalized_loss)
 
     # Corner loss
-    # We select the predicted corners corresponding to the 
+    # We select the predicted corners corresponding to the
     # GT heading bin and size cluster.
     corners_3d = get_box3d_corners(end_points['center'],
         end_points['heading_residuals'],
@@ -383,7 +384,7 @@ def get_loss(mask_label, center_label, \
 
     corners_dist = tf.minimum(tf.norm(corners_3d_pred - corners_3d_gt, axis=-1),
         tf.norm(corners_3d_pred - corners_3d_gt_flip, axis=-1))
-    corners_loss = huber_loss(corners_dist, delta=1.0) 
+    corners_loss = huber_loss(corners_dist, delta=1.0)
     tf.summary.scalar('corners loss', corners_loss)
 
     # Weighted sum of all losses

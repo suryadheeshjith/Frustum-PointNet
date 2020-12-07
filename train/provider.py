@@ -150,6 +150,41 @@ class FrustumDataset(object):
     def __len__(self):
             return len(self.input_list)
 
+    def get_center_view_rot_angle(self, index):
+        ''' Get the frustum rotation angle, it is shifted by pi/2 so that it
+        can be directly used to adjust GT heading angle '''
+        return np.pi/2.0 + self.frustum_angle_list[index]
+
+    def get_box3d_center(self, index):
+        ''' Get the center (XYZ) of 3D bounding box. '''
+        box3d_center = (self.box3d_list[index][0,:] + \
+            self.box3d_list[index][6,:])/2.0
+        return box3d_center
+
+    def get_center_view_box3d_center(self, index):
+        ''' Frustum rotation of 3D bounding box center. '''
+        box3d_center = (self.box3d_list[index][0,:] + \
+            self.box3d_list[index][6,:])/2.0
+        return rotate_pc_along_y(np.expand_dims(box3d_center,0), \
+            self.get_center_view_rot_angle(index)).squeeze()
+
+    def get_center_view_box3d(self, index):
+        ''' Frustum rotation of 3D bounding box corners. '''
+        box3d = self.box3d_list[index]
+        box3d_center_view = np.copy(box3d)
+        return rotate_pc_along_y(box3d_center_view, \
+            self.get_center_view_rot_angle(index))
+
+    def get_center_view_point_set(self, index):
+        ''' Frustum rotation of point clouds.
+        NxC points with first 3 channels as XYZ
+        z is facing forward, x is left ward, y is downward
+        '''
+        # Use np.copy to avoid corrupting original data
+        point_set = np.copy(self.input_list[index])
+        return rotate_pc_along_y(point_set, \
+            self.get_center_view_rot_angle(index))
+
     def __getitem__(self, index):
         ''' Get index-th element from the picked file dataset. '''
         # ------------------------------ INPUTS ----------------------------
@@ -220,41 +255,6 @@ class FrustumDataset(object):
         else:
             return point_set, seg, box3d_center, angle_class, angle_residual,\
                 size_class, size_residual, rot_angle
-
-    def get_center_view_rot_angle(self, index):
-        ''' Get the frustum rotation angle, it isshifted by pi/2 so that it
-        can be directly used to adjust GT heading angle '''
-        return np.pi/2.0 + self.frustum_angle_list[index]
-
-    def get_box3d_center(self, index):
-        ''' Get the center (XYZ) of 3D bounding box. '''
-        box3d_center = (self.box3d_list[index][0,:] + \
-            self.box3d_list[index][6,:])/2.0
-        return box3d_center
-
-    def get_center_view_box3d_center(self, index):
-        ''' Frustum rotation of 3D bounding box center. '''
-        box3d_center = (self.box3d_list[index][0,:] + \
-            self.box3d_list[index][6,:])/2.0
-        return rotate_pc_along_y(np.expand_dims(box3d_center,0), \
-            self.get_center_view_rot_angle(index)).squeeze()
-
-    def get_center_view_box3d(self, index):
-        ''' Frustum rotation of 3D bounding box corners. '''
-        box3d = self.box3d_list[index]
-        box3d_center_view = np.copy(box3d)
-        return rotate_pc_along_y(box3d_center_view, \
-            self.get_center_view_rot_angle(index))
-
-    def get_center_view_point_set(self, index):
-        ''' Frustum rotation of point clouds.
-        NxC points with first 3 channels as XYZ
-        z is facing forward, x is left ward, y is downward
-        '''
-        # Use np.copy to avoid corrupting original data
-        point_set = np.copy(self.input_list[index])
-        return rotate_pc_along_y(point_set, \
-            self.get_center_view_rot_angle(index))
 
 
 # ----------------------------------
