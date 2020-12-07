@@ -1,7 +1,4 @@
 """ Helper methods for loading and parsing KITTI data.
-
-Author: Charles R. Qi
-Date: September 2017
 """
 from __future__ import print_function
 
@@ -290,7 +287,7 @@ def compute_box_3d(obj, P):
     R = roty(obj.ry)
 
     # Test yaw
-    #R = roty(-0.523) 
+    #R = roty(-0.523)
 
 
 

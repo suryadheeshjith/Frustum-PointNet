@@ -1,7 +1,4 @@
 /* Furthest point sampling
- * Original author: Haoqiang Fan
- * Modified by Charles R. Qi
- * All Rights Reserved. 2017. 
  */
 #include "tensorflow/core/framework/op.h"
 #include "tensorflow/core/framework/op_kernel.h"
@@ -176,4 +173,3 @@ class GatherPointGradGpuOp: public OpKernel{
     }
 };
 REGISTER_KERNEL_BUILDER(Name("GatherPointGrad").Device(DEVICE_GPU),GatherPointGradGpuOp);
-

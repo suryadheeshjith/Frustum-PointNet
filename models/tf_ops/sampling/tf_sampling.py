@@ -1,7 +1,4 @@
 ''' Furthest point sampling
-Original author: Haoqiang Fan
-Modified by Charles R. Qi
-All Rights Reserved. 2017. 
 '''
 from __future__ import print_function
 import tensorflow as tf
@@ -56,7 +53,7 @@ returns:
     '''
     return sampling_module.farthest_point_sample(inp, npoint)
 ops.NoGradient('FarthestPointSample')
-    
+
 
 if __name__=='__main__':
     import numpy as np

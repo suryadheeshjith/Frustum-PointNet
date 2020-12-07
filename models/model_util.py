@@ -255,7 +255,7 @@ def get_box3d_corners(center, heading_residuals, size_residuals):
     heading_bin_centers = tf.constant(np.arange(0,2*np.pi,2*np.pi/NUM_HEADING_BIN), dtype=tf.float32) # (NH,)
     headings = heading_residuals + tf.expand_dims(heading_bin_centers, 0) # (B,NH)
 
-    mean_sizes = tf.expand_dims(tf.constant(g_mean_size_arr, dtype=tf.float32), 0) # (B,NS,1)
+    mean_sizes = tf.expand_dims(tf.constant(g_mean_size_arr, dtype=tf.float32), 0) # (1,NS,3)
     sizes = mean_sizes + size_residuals # (B,NS,3)
     sizes = tf.tile(tf.expand_dims(sizes,1), [1,NUM_HEADING_BIN,1,1]) # (B,NH,NS,3)
     headings = tf.tile(tf.expand_dims(headings,-1), [1,1,NUM_SIZE_CLUSTER]) # (B,NH,NS)
@@ -371,12 +371,14 @@ def get_loss(mask_label, center_label, \
     heading_label = tf.expand_dims(heading_residual_label,1) + \
         tf.expand_dims(heading_bin_centers, 0) # (B,NH)
     heading_label = tf.reduce_sum(tf.to_float(hcls_onehot)*heading_label, 1)
+
     mean_sizes = tf.expand_dims( \
         tf.constant(g_mean_size_arr, dtype=tf.float32), 0) # (1,NS,3)
     size_label = mean_sizes + \
         tf.expand_dims(size_residual_label, 1) # (1,NS,3) + (B,1,3) = (B,NS,3)
     size_label = tf.reduce_sum( \
         tf.expand_dims(tf.to_float(scls_onehot),-1)*size_label, axis=[1]) # (B,3)
+
     corners_3d_gt = get_box3d_corners_helper( \
         center_label, heading_label, size_label) # (B,8,3)
     corners_3d_gt_flip = get_box3d_corners_helper( \
