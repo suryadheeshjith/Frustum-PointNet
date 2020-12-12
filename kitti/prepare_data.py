@@ -1,7 +1,4 @@
 ''' Prepare KITTI data for 3D object detection.
-
-Author: Charles R. Qi
-Date: September 2017
 '''
 
 from __future__ import print_function
@@ -42,93 +39,6 @@ def extract_pc_in_box2d(pc, box2d):
     box2d_roi_inds = in_hull(pc[:,0:2], box2d_corners)
     return pc[box2d_roi_inds,:], box2d_roi_inds
 
-def demo():
-    import mayavi.mlab as mlab
-    from viz_util import draw_lidar, draw_lidar_simple, draw_gt_boxes3d
-    dataset = kitti_object(os.path.join(ROOT_DIR, 'dataset/KITTI/object'))
-    data_idx = 0
-
-    # Load data from dataset
-    objects = dataset.get_label_objects(data_idx)
-    objects[0].print_object()
-    img = dataset.get_image(data_idx)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_height, img_width, img_channel = img.shape
-    print(('Image shape: ', img.shape))
-    pc_velo = dataset.get_lidar(data_idx)[:,0:3]
-    calib = dataset.get_calibration(data_idx)
-
-    ## Draw lidar in rect camera coord
-    #print(' -------- LiDAR points in rect camera coordination --------')
-    #pc_rect = calib.project_velo_to_rect(pc_velo)
-    #fig = draw_lidar_simple(pc_rect)
-    #raw_input()
-
-    # Draw 2d and 3d boxes on image
-    print(' -------- 2D/3D bounding boxes in images --------')
-    show_image_with_boxes(img, objects, calib)
-    raw_input()
-
-    # Show all LiDAR points. Draw 3d box in LiDAR point cloud
-    print(' -------- LiDAR points and 3D boxes in velodyne coordinate --------')
-    #show_lidar_with_boxes(pc_velo, objects, calib)
-    #raw_input()
-    show_lidar_with_boxes(pc_velo, objects, calib, True, img_width, img_height)
-    raw_input()
-
-    # Visualize LiDAR points on images
-    print(' -------- LiDAR points projected to image plane --------')
-    show_lidar_on_image(pc_velo, img, calib, img_width, img_height)
-    raw_input()
-
-    # Show LiDAR points that are in the 3d box
-    print(' -------- LiDAR points in a 3D bounding box --------')
-    box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(objects[0], calib.P)
-    box3d_pts_3d_velo = calib.project_rect_to_velo(box3d_pts_3d)
-    box3droi_pc_velo, _ = extract_pc_in_box3d(pc_velo, box3d_pts_3d_velo)
-    print(('Number of points in 3d box: ', box3droi_pc_velo.shape[0]))
-
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
-        fgcolor=None, engine=None, size=(1000, 500))
-    draw_lidar(box3droi_pc_velo, fig=fig)
-    draw_gt_boxes3d([box3d_pts_3d_velo], fig=fig)
-    mlab.show(1)
-    raw_input()
-
-    # UVDepth Image and its backprojection to point clouds
-    print(' -------- LiDAR points in a frustum from a 2D box --------')
-    imgfov_pc_velo, pts_2d, fov_inds = get_lidar_in_image_fov(pc_velo,
-        calib, 0, 0, img_width, img_height, True)
-    imgfov_pts_2d = pts_2d[fov_inds,:]
-    imgfov_pc_rect = calib.project_velo_to_rect(imgfov_pc_velo)
-
-    cameraUVDepth = np.zeros_like(imgfov_pc_rect)
-    cameraUVDepth[:,0:2] = imgfov_pts_2d
-    cameraUVDepth[:,2] = imgfov_pc_rect[:,2]
-
-    # Show that the points are exactly the same
-    backprojected_pc_velo = calib.project_image_to_velo(cameraUVDepth)
-    print(imgfov_pc_velo[0:20])
-    print(backprojected_pc_velo[0:20])
-
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
-        fgcolor=None, engine=None, size=(1000, 500))
-    draw_lidar(backprojected_pc_velo, fig=fig)
-    raw_input()
-
-    # Only display those points that fall into 2d box
-    print(' -------- LiDAR points in a frustum from a 2D box --------')
-    xmin,ymin,xmax,ymax = \
-        objects[0].xmin, objects[0].ymin, objects[0].xmax, objects[0].ymax
-    boxfov_pc_velo = \
-        get_lidar_in_image_fov(pc_velo, calib, xmin, ymin, xmax, ymax)
-    print(('2d box FOV point num: ', boxfov_pc_velo.shape[0]))
-
-    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
-        fgcolor=None, engine=None, size=(1000, 500))
-    draw_lidar(boxfov_pc_velo, fig=fig)
-    mlab.show(1)
-    raw_input()
 
 def random_shift_box2d(box2d, shift_ratio=0.1):
     ''' Randomly shift box center, randomly scale width and height
@@ -220,6 +130,9 @@ def extract_frustum_data(idx_filename, split, output_filename, viz=False,
                 box2d_center_rect = calib.project_image_to_rect(uvdepth)
                 frustum_angle = -1 * np.arctan2(box2d_center_rect[0,2],
                     box2d_center_rect[0,0])
+
+                print("box2d_center_rect : ", box2d_center_rect)
+                print("Frustum angle : ", frustum_angle)
                 # 3D BOX: Get pts velo in 3d box
                 obj = objects[obj_idx]
                 box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(obj, calib.P)
@@ -278,28 +191,6 @@ def extract_frustum_data(idx_filename, split, output_filename, viz=False,
                 colormap='gnuplot', scale_factor=1, figure=fig)
             raw_input()
 
-def get_box3d_dim_statistics(idx_filename):
-    ''' Collect and dump 3D bounding box statistics '''
-    dataset = kitti_object(os.path.join(ROOT_DIR,'dataset/KITTI/object'))
-    dimension_list = []
-    type_list = []
-    ry_list = []
-    data_idx_list = [int(line.rstrip()) for line in open(idx_filename)]
-    for data_idx in data_idx_list:
-        print('------------- ', data_idx)
-        calib = dataset.get_calibration(data_idx) # 3 by 4 matrix
-        objects = dataset.get_label_objects(data_idx)
-        for obj_idx in range(len(objects)):
-            obj = objects[obj_idx]
-            if obj.type=='DontCare':continue
-            dimension_list.append(np.array([obj.l,obj.w,obj.h]))
-            type_list.append(obj.type)
-            ry_list.append(obj.ry)
-
-    with open('box3d_dimensions.pickle','wb') as fp:
-        pickle.dump(type_list, fp)
-        pickle.dump(dimension_list, fp)
-        pickle.dump(ry_list, fp)
 
 def read_det_file(det_filename):
     ''' Parse lines in 2D detection output files '''
@@ -422,45 +313,105 @@ def extract_frustum_data_rgb_detection(det_filename, split, output_filename,
                 colormap='gnuplot', scale_factor=1, figure=fig)
             raw_input()
 
-def write_2d_rgb_detection(det_filename, split, result_dir):
-    ''' Write 2D detection results for KITTI evaluation.
-        Convert from Wei's format to KITTI format.
 
-    Input:
-        det_filename: string, each line is
-            img_path typeid confidence xmin ymin xmax ymax
-        split: string, either trianing or testing
-        result_dir: string, folder path for results dumping
-    Output:
-        None (will write <xxx>.txt files to disk)
+##################################################################################################
+#### OUTPUTTING
+##################################################################################################
 
-    Usage:
-        write_2d_rgb_detection("val_det.txt", "training", "results")
-    '''
-    dataset = kitti_object(os.path.join(ROOT_DIR, 'dataset/KITTI/object'), split)
-    det_id_list, det_type_list, det_box2d_list, det_prob_list = \
-        read_det_file(det_filename)
-    # map from idx to list of strings, each string is a line without \n
-    results = {}
-    for i in range(len(det_id_list)):
-        idx = det_id_list[i]
-        typename = det_type_list[i]
-        box2d = det_box2d_list[i]
-        prob = det_prob_list[i]
-        output_str = typename + " -1 -1 -10 "
-        output_str += "%f %f %f %f " % (box2d[0],box2d[1],box2d[2],box2d[3])
-        output_str += "-1 -1 -1 -1000 -1000 -1000 -10 %f" % (prob)
-        if idx not in results: results[idx] = []
-        results[idx].append(output_str)
-    if not os.path.exists(result_dir): os.mkdir(result_dir)
-    output_dir = os.path.join(result_dir, 'data')
-    if not os.path.exists(output_dir): os.mkdir(output_dir)
-    for idx in results:
-        pred_filename = os.path.join(output_dir, '%06d.txt'%(idx))
-        fout = open(pred_filename, 'w')
-        for line in results[idx]:
-            fout.write(line+'\n')
-        fout.close()
+
+def demo():
+    import mayavi.mlab as mlab
+    from viz_util import draw_lidar, draw_lidar_simple, draw_gt_boxes3d
+    dataset = kitti_object(os.path.join(ROOT_DIR, 'dataset/KITTI/object'))
+    data_idx = 0
+
+    # Load data from dataset
+    objects = dataset.get_label_objects(data_idx)
+    objects[0].print_object()
+    img = dataset.get_image(data_idx)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    img_height, img_width, img_channel = img.shape
+    print(('Image shape: ', img.shape))
+    pc_velo = dataset.get_lidar(data_idx)[:,0:3]
+    calib = dataset.get_calibration(data_idx)
+
+    ## Draw lidar in rect camera coord
+    #print(' -------- LiDAR points in rect camera coordination --------')
+    #pc_rect = calib.project_velo_to_rect(pc_velo)
+    #fig = draw_lidar_simple(pc_rect)
+    #raw_input()
+
+    # Draw 2d and 3d boxes on image
+    print(' -------- 2D/3D bounding boxes in images --------')
+    show_image_with_boxes(img, objects, calib)
+    raw_input()
+
+    # Show all LiDAR points. Draw 3d box in LiDAR point cloud
+    print(' -------- LiDAR points and 3D boxes in velodyne coordinate --------')
+    #show_lidar_with_boxes(pc_velo, objects, calib)
+    #raw_input()
+    show_lidar_with_boxes(pc_velo, objects, calib, True, img_width, img_height)
+    raw_input()
+
+    # Visualize LiDAR points on images
+    print(' -------- LiDAR points projected to image plane --------')
+    show_lidar_on_image(pc_velo, img, calib, img_width, img_height)
+    raw_input()
+
+    # Show LiDAR points that are in the 3d box
+    print(' -------- LiDAR points in a 3D bounding box --------')
+    box3d_pts_2d, box3d_pts_3d = utils.compute_box_3d(objects[0], calib.P)
+    box3d_pts_3d_velo = calib.project_rect_to_velo(box3d_pts_3d)
+    box3droi_pc_velo, _ = extract_pc_in_box3d(pc_velo, box3d_pts_3d_velo)
+    print(('Number of points in 3d box: ', box3droi_pc_velo.shape[0]))
+
+    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
+        fgcolor=None, engine=None, size=(1000, 500))
+    draw_lidar(box3droi_pc_velo, fig=fig)
+    draw_gt_boxes3d([box3d_pts_3d_velo], fig=fig)
+    mlab.show(1)
+    raw_input()
+
+    # UVDepth Image and its backprojection to point clouds
+    print(' -------- LiDAR points in a frustum from a 2D box --------')
+    imgfov_pc_velo, pts_2d, fov_inds = get_lidar_in_image_fov(pc_velo,
+        calib, 0, 0, img_width, img_height, True)
+    imgfov_pts_2d = pts_2d[fov_inds,:]
+    imgfov_pc_rect = calib.project_velo_to_rect(imgfov_pc_velo)
+
+    cameraUVDepth = np.zeros_like(imgfov_pc_rect)
+    cameraUVDepth[:,0:2] = imgfov_pts_2d
+    cameraUVDepth[:,2] = imgfov_pc_rect[:,2]
+
+    # Show that the points are exactly the same
+    backprojected_pc_velo = calib.project_image_to_velo(cameraUVDepth)
+    print(imgfov_pc_velo[0:20])
+    print(backprojected_pc_velo[0:20])
+
+    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
+        fgcolor=None, engine=None, size=(1000, 500))
+    draw_lidar(backprojected_pc_velo, fig=fig)
+    raw_input()
+
+    # Only display those points that fall into 2d box
+    print(' -------- LiDAR points in a frustum from a 2D box --------')
+    xmin,ymin,xmax,ymax = \
+        objects[0].xmin, objects[0].ymin, objects[0].xmax, objects[0].ymax
+    boxfov_pc_velo = \
+        get_lidar_in_image_fov(pc_velo, calib, xmin, ymin, xmax, ymax)
+    print(('2d box FOV point num: ', boxfov_pc_velo.shape[0]))
+
+    fig = mlab.figure(figure=None, bgcolor=(0,0,0),
+        fgcolor=None, engine=None, size=(1000, 500))
+    draw_lidar(boxfov_pc_velo, fig=fig)
+    mlab.show(1)
+    raw_input()
+
+##################################################################################################
+#### Main
+##################################################################################################
+
+
 
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
@@ -484,7 +435,7 @@ if __name__=='__main__':
 
     if args.gen_train:
         extract_frustum_data(\
-            os.path.join(BASE_DIR, 'image_sets/train1.txt'),
+            os.path.join(BASE_DIR, 'image_sets/train2.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'train.pickle'),
             viz=False, perturb_box2d=True, augmentX=5,
@@ -492,7 +443,7 @@ if __name__=='__main__':
 
     if args.gen_val:
         extract_frustum_data(\
-            os.path.join(BASE_DIR, 'image_sets/val1.txt'),
+            os.path.join(BASE_DIR, 'image_sets/val2.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'val.pickle'),
             viz=False, perturb_box2d=False, augmentX=1,
@@ -500,7 +451,7 @@ if __name__=='__main__':
 
     if args.gen_val_rgb_detection:
         extract_frustum_data_rgb_detection(\
-            os.path.join(BASE_DIR, 'rgb_detections/rgb_detection_val1.txt'),
+            os.path.join(BASE_DIR, 'rgb_detections/rgb_detection_val2.txt'),
             'training',
             os.path.join(BASE_DIR, output_prefix+'val_rgb_detection.pickle'),
             viz=False,

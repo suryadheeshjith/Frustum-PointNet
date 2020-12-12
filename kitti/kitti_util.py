@@ -1,7 +1,4 @@
 """ Helper methods for loading and parsing KITTI data.
-
-Author: Charles R. Qi
-Date: September 2017
 """
 from __future__ import print_function
 
@@ -78,11 +75,9 @@ class Calibration(object):
 
         TODO(rqi): do matrix multiplication only once for each projection.
     '''
-    def __init__(self, calib_filepath, from_video=False):
-        if from_video:
-            calibs = self.read_calib_from_video(calib_filepath)
-        else:
-            calibs = self.read_calib_file(calib_filepath)
+    def __init__(self, calib_filepath): #, from_video=False
+
+        calibs = self.read_calib_file(calib_filepath)
         # Projection matrix from rect camera coord to image2 coord
         self.P = calibs['P2']
         self.P = np.reshape(self.P, [3,4])
@@ -121,24 +116,10 @@ class Calibration(object):
 
         return data
 
-    def read_calib_from_video(self, calib_root_dir):
-        ''' Read calibration for camera 2 from video calib files.
-            there are calib_cam_to_cam and calib_velo_to_cam under the calib_root_dir
-        '''
-        data = {}
-        cam2cam = self.read_calib_file(os.path.join(calib_root_dir, 'calib_cam_to_cam.txt'))
-        velo2cam = self.read_calib_file(os.path.join(calib_root_dir, 'calib_velo_to_cam.txt'))
-        Tr_velo_to_cam = np.zeros((3,4))
-        Tr_velo_to_cam[0:3,0:3] = np.reshape(velo2cam['R'], [3,3])
-        Tr_velo_to_cam[:,3] = velo2cam['T']
-        data['Tr_velo_to_cam'] = np.reshape(Tr_velo_to_cam, [12])
-        data['R0_rect'] = cam2cam['R_rect_00']
-        data['P2'] = cam2cam['P_rect_02']
-        return data
 
     def cart2hom(self, pts_3d):
         ''' Input: nx3 points in Cartesian
-            Oupput: nx4 points in Homogeneous by pending 1
+            Output: nx4 points in Homogeneous by pending 1
         '''
         n = pts_3d.shape[0]
         pts_3d_hom = np.hstack((pts_3d, np.ones((n,1))))
@@ -305,6 +286,11 @@ def compute_box_3d(obj, P):
     # compute rotational matrix around yaw axis
     R = roty(obj.ry)
 
+    # Test yaw
+    #R = roty(-0.523)
+
+
+
     # 3d bounding box dimensions
     l = obj.l;
     w = obj.w;
@@ -317,7 +303,8 @@ def compute_box_3d(obj, P):
 
     # rotate and translate 3d bounding box
     corners_3d = np.dot(R, np.vstack([x_corners,y_corners,z_corners]))
-    #print corners_3d.shape
+
+
     corners_3d[0,:] = corners_3d[0,:] + obj.t[0];
     corners_3d[1,:] = corners_3d[1,:] + obj.t[1];
     corners_3d[2,:] = corners_3d[2,:] + obj.t[2];
@@ -331,6 +318,11 @@ def compute_box_3d(obj, P):
     corners_2d = project_to_image(np.transpose(corners_3d), P);
     #print 'corners_2d: ', corners_2d
     return corners_2d, np.transpose(corners_3d)
+
+
+##################################################################################################
+#### OUTPUTTING
+##################################################################################################
 
 
 def compute_orientation_3d(obj, P):
@@ -364,7 +356,7 @@ def compute_orientation_3d(obj, P):
 
 def draw_projected_box3d(image, qs, color=(255,255,255), thickness=2):
     ''' Draw 3d bounding box in image
-        qs: (8,3) array of vertices for the 3d box in following order:
+        qs: (8,2) array of vertices for the 3d box in following order:
             1 -------- 0
            /|         /|
           2 -------- 3 .

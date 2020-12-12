@@ -1,7 +1,4 @@
 ''' Util functions for training and evaluation.
-
-Author: Charles R. Qi
-Date: September 2017
 '''
 
 import numpy as np
@@ -38,6 +35,8 @@ def get_batch(dataset, idxs, start_idx, end_idx,
     batch_rot_angle = np.zeros((bsize,))
     if dataset.one_hot:
         batch_one_hot_vec = np.zeros((bsize,3)) # for car,ped,cyc
+
+
     for i in range(bsize):
         if dataset.one_hot:
             ps,seg,center,hclass,hres,sclass,sres,rotangle,onehotvec = \
@@ -85,5 +84,3 @@ def get_batch_from_rgb_detection(dataset, idxs, start_idx, end_idx,
         return batch_data, batch_rot_angle, batch_prob, batch_one_hot_vec
     else:
         return batch_data, batch_rot_angle, batch_prob
-
-

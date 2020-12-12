@@ -1,9 +1,6 @@
 ''' Evaluating Frustum PointNets.
 Write evaluation results to KITTI format labels.
 and [optionally] write results to pickle files.
-
-Author: Charles R. Qi
-Date: September 2017
 '''
 from __future__ import print_function
 
@@ -25,9 +22,9 @@ from train_util import get_batch
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU 0]')
 parser.add_argument('--num_point', type=int, default=1024, help='Point Number [default: 1024]')
-parser.add_argument('--model', default='frustum_pointnets_v1', help='Model name [default: frustum_pointnets_v1]')
 parser.add_argument('--model_path', default='log/model.ckpt', help='model checkpoint file path [default: log/model.ckpt]')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size for inference [default: 32]')
+parser.add_argument('--loss', default='huber', help='huber or quantile [default: huber]')
 parser.add_argument('--output', default='test_results', help='output file/folder name [default: test_results]')
 parser.add_argument('--data_path', default=None, help='frustum dataset pickle filepath [default: None]')
 parser.add_argument('--from_rgb_detection', action='store_true', help='test from dataset files from rgb detection.')
@@ -37,10 +34,11 @@ FLAGS = parser.parse_args()
 
 # Set training configurations
 BATCH_SIZE = FLAGS.batch_size
+LOSS_FN = FLAGS.loss
 MODEL_PATH = FLAGS.model_path
 GPU_INDEX = FLAGS.gpu
 NUM_POINT = FLAGS.num_point
-MODEL = importlib.import_module(FLAGS.model)
+MODEL = importlib.import_module('frustum_pointnets_v1')
 NUM_CLASSES = 2
 NUM_CHANNEL = 4
 
@@ -64,7 +62,7 @@ def get_session_and_ops(batch_size, num_point):
                 is_training_pl)
             loss = MODEL.get_loss(labels_pl, centers_pl,
                 heading_class_label_pl, heading_residual_label_pl,
-                size_class_label_pl, size_residual_label_pl, end_points)
+                size_class_label_pl, LOSS_FN, size_residual_label_pl, end_points)
             saver = tf.train.Saver()
 
         # Create a session
@@ -136,8 +134,10 @@ def inference(sess, ops, pc, one_hot_vec, batch_size):
         batch_seg_mask = np.argmax(batch_logits, 2) # BxN
         mask_mean_prob = np.sum(batch_seg_prob * batch_seg_mask, 1) # B,
         mask_mean_prob = mask_mean_prob / np.sum(batch_seg_mask,1) # B,
+
         heading_prob = np.max(softmax(batch_heading_scores),1) # B
         size_prob = np.max(softmax(batch_size_scores),1) # B,
+
         batch_scores = np.log(mask_mean_prob) + np.log(heading_prob) + np.log(size_prob)
         scores[i*batch_size:(i+1)*batch_size] = batch_scores
         # Finished computing scores
