@@ -277,14 +277,12 @@ def huber_loss(error, delta):
 
 def quantile_loss(error, tau_list=None):
     if(tau_list is None):
-        tau_list = [.1,.5,.9]
+        tau_list = [.9] # Defaults [.1,.5,.9]
     loss = 0
     for tau in tau_list:
         loss += tf.maximum(tau * (error), (tau - 1) * (error))
-    return tf.reduce_mean(tf.convert_to_tensor(loss))
-
-
-
+    loss /= len(tau_list)
+    return tf.reduce_mean(loss)
 
 def get_loss(mask_label, center_label, \
              heading_class_label, heading_residual_label, \
@@ -319,7 +317,7 @@ def get_loss(mask_label, center_label, \
         center_loss = huber_loss(center_dist, delta=2.0)
 
     else:
-        center_loss = quantile_loss(center_dist, tau_list=[0.9])
+        center_loss = quantile_loss(center_dist)
 
     tf.summary.scalar('center loss', center_loss)
     stage1_center_dist = tf.norm(center_label - \
@@ -329,7 +327,7 @@ def get_loss(mask_label, center_label, \
         stage1_center_loss = huber_loss(stage1_center_dist, delta=1.0)
 
     else:
-        stage1_center_loss = quantile_loss(stage1_center_dist, tau_list=[0.9])
+        stage1_center_loss = quantile_loss(stage1_center_dist)
     tf.summary.scalar('stage1 center loss', stage1_center_loss)
 
     # Heading loss
@@ -351,7 +349,7 @@ def get_loss(mask_label, center_label, \
     else:
         heading_residual_normalized_loss = quantile_loss(tf.reduce_sum( \
             end_points['heading_residuals_normalized']*tf.to_float(hcls_onehot), axis=1) - \
-            heading_residual_normalized_label, tau_list=[0.9])
+            heading_residual_normalized_label)
 
     tf.summary.scalar('heading residual normalized loss',
         heading_residual_normalized_loss)
@@ -383,7 +381,7 @@ def get_loss(mask_label, center_label, \
         size_residual_normalized_loss = huber_loss(size_normalized_dist, delta=1.0)
 
     else:
-        size_residual_normalized_loss = quantile_loss(size_normalized_dist, tau_list=[0.9])
+        size_residual_normalized_loss = quantile_loss(size_normalized_dist)
 
     tf.summary.scalar('size residual normalized loss',
         size_residual_normalized_loss)
@@ -426,7 +424,7 @@ def get_loss(mask_label, center_label, \
         corners_loss = huber_loss(corners_dist, delta=1.0)
 
     else:
-        corners_loss = quantile_loss(corners_dist, tau_list=[0.9])
+        corners_loss = quantile_loss(corners_dist)
 
     tf.summary.scalar('corners loss', corners_loss)
 
