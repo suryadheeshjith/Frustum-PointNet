@@ -25,6 +25,7 @@ parser.add_argument('--batch_size', type=int, default=32, help='Batch Size durin
 parser.add_argument('--learning_rate', type=float, default=0.001, help='Initial learning rate [default: 0.001]')
 parser.add_argument('--momentum', type=float, default=0.9, help='Initial learning rate [default: 0.9]')
 parser.add_argument('--optimizer', default='adam', help='adam or momentum [default: adam]')
+parser.add_argument('--loss', default='huber', help='huber or quantile [default: huber]')
 parser.add_argument('--decay_step', type=int, default=200000, help='Decay step for lr decay [default: 200000]')
 parser.add_argument('--decay_rate', type=float, default=0.7, help='Decay rate for lr decay [default: 0.7]')
 parser.add_argument('--no_intensity', action='store_true', help='Only use XYZ for training')
@@ -39,6 +40,7 @@ MAX_EPOCH = FLAGS.max_epoch
 BASE_LEARNING_RATE = FLAGS.learning_rate
 GPU_INDEX = FLAGS.gpu
 MOMENTUM = FLAGS.momentum
+LOSS_FN = FLAGS.loss
 OPTIMIZER = FLAGS.optimizer
 DECAY_STEP = FLAGS.decay_step
 DECAY_RATE = FLAGS.decay_rate
@@ -114,7 +116,7 @@ def train():
                 is_training_pl, bn_decay=bn_decay)
             loss = MODEL.get_loss(labels_pl, centers_pl,
                 heading_class_label_pl, heading_residual_label_pl,
-                size_class_label_pl, size_residual_label_pl, end_points)
+                size_class_label_pl,  LOSS_FN, size_residual_label_pl, end_points)
             tf.summary.scalar('loss', loss)
 
             losses = tf.get_collection('losses')

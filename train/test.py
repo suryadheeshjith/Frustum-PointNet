@@ -24,6 +24,7 @@ parser.add_argument('--gpu', type=int, default=0, help='GPU to use [default: GPU
 parser.add_argument('--num_point', type=int, default=1024, help='Point Number [default: 1024]')
 parser.add_argument('--model_path', default='log/model.ckpt', help='model checkpoint file path [default: log/model.ckpt]')
 parser.add_argument('--batch_size', type=int, default=32, help='batch size for inference [default: 32]')
+parser.add_argument('--loss', default='huber', help='huber or quantile [default: huber]')
 parser.add_argument('--output', default='test_results', help='output file/folder name [default: test_results]')
 parser.add_argument('--data_path', default=None, help='frustum dataset pickle filepath [default: None]')
 parser.add_argument('--from_rgb_detection', action='store_true', help='test from dataset files from rgb detection.')
@@ -33,6 +34,7 @@ FLAGS = parser.parse_args()
 
 # Set training configurations
 BATCH_SIZE = FLAGS.batch_size
+LOSS_FN = FLAGS.loss
 MODEL_PATH = FLAGS.model_path
 GPU_INDEX = FLAGS.gpu
 NUM_POINT = FLAGS.num_point
@@ -60,7 +62,7 @@ def get_session_and_ops(batch_size, num_point):
                 is_training_pl)
             loss = MODEL.get_loss(labels_pl, centers_pl,
                 heading_class_label_pl, heading_residual_label_pl,
-                size_class_label_pl, size_residual_label_pl, end_points)
+                size_class_label_pl, LOSS_FN, size_residual_label_pl, end_points)
             saver = tf.train.Saver()
 
         # Create a session
