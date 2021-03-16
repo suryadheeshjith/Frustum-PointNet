@@ -277,7 +277,7 @@ def huber_loss(error, delta):
 
 def quantile_loss(error, tau_list=None):
     if(tau_list is None):
-        tau_list = [.9] # Defaults [.1,.5,.9]
+        tau_list = [.1,.5,.9] # Defaults [.1,.5,.9]
     loss = 0
     for tau in tau_list:
         loss += tf.maximum(tau * (error), (tau - 1) * (error))

@@ -56,8 +56,9 @@ def get_instance_seg_v1_net(point_cloud, one_hot_vec,
                          padding='VALID', stride=[1,1],
                          bn=True, is_training=is_training,
                          scope='conv5', bn_decay=bn_decay)
-    global_feat = tf_util.max_pool2d(net, [num_point,1],
-                                     padding='VALID', scope='maxpool')
+    #global_feat = tf_util.max_pool2d(net, [num_point,1], padding='VALID', scope='maxpool')
+    global_feat = tf_util.avg_pool2d(net, [num_point,1], padding='VALID', scope='avgpool')
+
 
     global_feat = tf.concat([global_feat, tf.expand_dims(tf.expand_dims(one_hot_vec, 1), 1)], axis=3)
     global_feat_expand = tf.tile(global_feat, [1, num_point, 1, 1])
